@@ -2,9 +2,8 @@ name: Export Vocaza Quotidien
 
 on:
   schedule:
-    # Tous les jours à 18h00 (heure de Paris = 17h00 UTC en hiver, 16h00 UTC en été)
     - cron: '0 17 * * *'
-  workflow_dispatch: # Permet de tester manuellement
+  workflow_dispatch:
 
 jobs:
   export-to-vocaza:
@@ -23,12 +22,9 @@ jobs:
         run: |
           pip install pyairtable paramiko
       
-      - name: Export and Upload to Vocaza
-        env:
-          AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
-          SFTP_PASSWORD: ${{ secrets.SFTP_PASSWORD }}
+      - name: Create Python script
         run: |
-          python - <<'EOF'
+          cat > export_vocaza.py << 'SCRIPT_END'
           import os
           import csv
           import paramiko
@@ -89,11 +85,3 @@ jobs:
           csv_writer.writerow(['E-mail', 'Prénom', 'Nom', 'Téléphone', 'Date_inscription', 'Agence'])
           
           # Données
-          record_ids = []
-          for record in records:
-              fields = record['fields']
-              
-              # Formatage date (ISO -> DD/MM/YYYY)
-              date_inscription = ''
-              if FIELD_DATE_CREATION in fields:
-                  date_obj = datetime.fromisoformat(fields[FIELD_DATE_CREATION].replace('Z', '+00:00'))
