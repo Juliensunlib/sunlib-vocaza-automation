@@ -85,3 +85,100 @@ jobs:
           csv_writer.writerow(['E-mail', 'Prénom', 'Nom', 'Téléphone', 'Date_inscription', 'Agence'])
           
           # Données
+          record_ids = []
+          for record in records:
+              fields = record['fields']
+              
+              # Formatage date (ISO -> DD/MM/YYYY)
+              date_inscription = ''
+              if FIELD_DATE_CREATION in fields:
+                  date_obj = datetime.fromisoformat(fields[FIELD_DATE_CREATION].replace('Z', '+00:00'))
+                  date_inscription = date_obj.strftime('%d/%m/%Y')
+              
+              # Récupération agence (premier élément si liste)
+              agence = ''
+              if FIELD_AGENCE in fields and fields[FIELD_AGENCE]:
+                  agence = fields[FIELD_AGENCE][0] if isinstance(fields[FIELD_AGENCE], list) else fields[FIELD_AGENCE]
+              
+              csv_writer.writerow([
+                  fields.get(FIELD_EMAIL, ''),
+                  fields.get(FIELD_PRENOM, ''),
+                  fields.get(FIELD_NOM, ''),
+                  fields.get(FIELD_TELEPHONE, ''),
+                  date_inscription,
+                  agence
+              ])
+              
+              record_ids.append(record['id'])
+          
+          csv_content = csv_output.getvalue()
+          
+          # Nom du fichier
+          timestamp = datetime.now().strftime('%Y%m%d')
+          filename = f"sunlib_contacts_{timestamp}.csv"
+          
+          print(f"✅ CSV généré : {filename}")
+          
+          # 3. Upload SFTP
+          print("📤 Connexion SFTP...")
+          
+          try:
+              transport = paramiko.Transport((SFTP_HOST, SFTP_PORT))
+              transport.connect(username=SFTP_USERNAME, password=SFTP_PASSWORD)
+              sftp = paramiko.SFTPClient.from_transport(transport)
+              
+              print(f"📤 Upload du fichier vers Vocaza...")
+              
+              # Upload du fichier
+              sftp.putfo(StringIO(csv_content), f"/{filename}")
+              
+              print(f"✅ Fichier {filename} uploadé avec succès !")
+              
+              sftp.close()
+              transport.close()
+              
+              upload_success = True
+              
+          except Exception as e:
+              print(f"❌ Erreur SFTP : {str(e)}")
+              upload_success = False
+          
+          # 4. Mise à jour Airtable
+          print("🔄 Mise à jour des statuts Airtable...")
+          
+          today = datetime.now().strftime('%Y-%m-%d')
+          
+          for record_id in record_ids:
+              try:
+                  if upload_success:
+                      # Succès : Statut "Envoyé" + Date d'envoi
+                      table.update(record_id, {
+                          FIELD_STATUT_VOCAZA: OPTION_ENVOYE,
+                          FIELD_DATE_ENVOI: today
+                      })
+                  else:
+                      # Échec : Statut "Echec"
+                      table.update(record_id, {
+                          FIELD_STATUT_VOCAZA: OPTION_ECHEC
+                      })
+              except Exception as e:
+                  print(f"⚠️ Erreur mise à jour record {record_id}: {str(e)}")
+          
+          print("✅ Mise à jour Airtable terminée")
+          
+          # 5. Résumé
+          print("\n" + "="*50)
+          print("📊 RÉSUMÉ DE L'EXPORT")
+          print("="*50)
+          print(f"Contacts exportés : {len(records)}")
+          print(f"Fichier : {filename}")
+          print(f"Statut upload : {'✅ Succès' if upload_success else '❌ Échec'}")
+          print(f"Heure : {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+          print("="*50)
+          SCRIPT_END
+      
+      - name: Run export script
+        env:
+          AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
+          SFTP_PASSWORD: ${{ secrets.SFTP_PASSWORD }}
+        run: python export_vocaza.py
