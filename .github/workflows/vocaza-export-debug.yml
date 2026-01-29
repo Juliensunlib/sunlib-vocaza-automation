@@ -46,7 +46,7 @@ jobs:
           COL_NOM_ENTREPRISE = "Nom de l'entreprise"
           COL_CIVILITE = "Civilité Abonné 1"
           COL_EMAIL = "Email"
-          COL_INSTALLATEUR = "Contacts Installateur"
+          COL_INSTALLATEUR = "Nom de l'entreprise (from Installateur )"
           COL_CONFIG_CLIENT = "Champs IA Config client"
           
           # Tracking
@@ -76,7 +76,7 @@ jobs:
           # ============================================
           
           print("=" * 60)
-          print("🚀 EXPORT VOCAZA - MODE DEBUG CORRIGÉ")
+          print("🚀 EXPORT VOCAZA - MODE DEBUG AVEC INSTALLATEUR")
           print("=" * 60)
           print(f"Date : {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
           print()
@@ -112,7 +112,7 @@ jobs:
               print(f"\n📋 Contact {i+1} :")
               print(f"   ID : {record['id']}")
               
-              # Afficher chaque champ qu'on veut extraire AVEC LES NOMS DE COLONNES
+              # Afficher chaque champ qu'on veut extraire
               fields = record['fields']
               print(f"   - PDL (Colonne: {COL_PDL}) : {fields.get(COL_PDL, 'VIDE')}")
               print(f"   - Nom (Colonne: {COL_NOM}) : {fields.get(COL_NOM, 'VIDE')}")
