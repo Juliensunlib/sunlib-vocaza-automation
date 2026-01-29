@@ -238,4 +238,34 @@ jobs:
                               }
                           })
                   
-                  ta
+                  table.batch_update(updates)
+                  total_updated += len(updates)
+                  print(f"   ✅ {total_updated}/{len(record_ids)} contacts mis à jour")
+              
+              print(f"✅ Mise à jour Airtable terminée")
+              
+          except Exception as e:
+              print(f"❌ Erreur mise à jour Airtable : {e}")
+          
+          # 6. RÉSUMÉ FINAL
+          print()
+          print("=" * 60)
+          print("📊 RÉSUMÉ DE L'EXPORT")
+          print("=" * 60)
+          print(f"Contacts traités    : {len(records)}")
+          print(f"Fichier généré      : {filename}")
+          print(f"Format CSV          : 8 colonnes, séparateur point-virgule")
+          print(f"Upload SFTP         : {'✅ Succès' if upload_success else '❌ Échec'}")
+          print(f"Statut Airtable     : {'Envoyé' if upload_success else 'Echec'}")
+          print(f"Heure de fin        : {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+          print("=" * 60)
+          
+          # Code de sortie
+          exit(0 if upload_success else 1)
+          SCRIPT_END
+      
+      - name: Run export script
+        env:
+          AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
+          SFTP_PASSWORD: ${{ secrets.SFTP_PASSWORD }}
+        run: python export_vocaza.py
