@@ -54,10 +54,6 @@ jobs:
           COL_STATUT_VOCAZA = "Statut Vocaza"
           COL_DATE_ENVOI = "Date d'envoi Vocaza"
           
-          # Statut Vocaza - Option IDs
-          OPTION_ENVOYE = "selk5AkrlBwJ2gudt"
-          OPTION_ECHEC = "selqdKkqKxe5wAarj"
-          
           # SFTP Vocaza
           SFTP_HOST = "sunlib.enquete-en-ligne.com"
           SFTP_PORT = 12360
@@ -225,7 +221,7 @@ jobs:
                           updates.append({
                               'id': record_id,
                               'fields': {
-                                  COL_STATUT_VOCAZA: {'id': OPTION_ENVOYE},
+                                  COL_STATUT_VOCAZA: 'Envoyé',
                                   COL_DATE_ENVOI: today
                               }
                           })
@@ -234,7 +230,7 @@ jobs:
                           updates.append({
                               'id': record_id,
                               'fields': {
-                                  COL_STATUT_VOCAZA: {'id': OPTION_ECHEC}
+                                  COL_STATUT_VOCAZA: 'Echec'
                               }
                           })
                   
