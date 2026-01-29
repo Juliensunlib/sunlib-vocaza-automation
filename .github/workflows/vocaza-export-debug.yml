@@ -1,0 +1,224 @@
+name: Export Vocaza Quotidien - DEBUG
+
+on:
+  workflow_dispatch:  # Test manuel uniquement
+
+jobs:
+  export-to-vocaza:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install pyairtable paramiko
+      
+      - name: Create export script
+        run: |
+          cat > export_vocaza.py << 'SCRIPT_END'
+          import os
+          import csv
+          import json
+          import paramiko
+          from datetime import datetime
+          from pyairtable import Api
+          
+          # ============================================
+          # CONFIGURATION
+          # ============================================
+          
+          # Airtable
+          BASE_ID = "appe55vTZRk6Ssd2w"
+          TABLE_ID = "tblcACuSWYttnFQNr"
+          VIEW_ID = "viwQn2IYQ5nBuXxkY"
+          
+          # Field IDs
+          FIELD_PDL = "fldEEokisVxAniL1y"
+          FIELD_NOM = "fldfnBO2Xb6mNgAcq"
+          FIELD_PRENOM = "fldhxncaPKtHlqqgZ"
+          FIELD_NOM_ENTREPRISE = "flduVtvZSWvLPSBEg"
+          FIELD_CIVILITE = "fldKr5bCTxRDzy4aR"
+          FIELD_EMAIL = "fldG47uG3mXq1qGRP"
+          FIELD_INSTALLATEUR = "fldNY6lBfZQCXYTCa"
+          FIELD_CONFIG_CLIENT = "fld3SpiGzcJrADLgL"
+          
+          # Tracking
+          FIELD_STATUT_VOCAZA = "fldEAceKmwRR9we4a"
+          FIELD_DATE_ENVOI = "fld8QZLv3tebi4523"
+          
+          # Statut Vocaza - Option IDs
+          OPTION_ENVOYE = "selk5AkrlBwJ2gudt"
+          OPTION_ECHEC = "selqdKkqKxe5wAarj"
+          
+          # SFTP Vocaza
+          SFTP_HOST = "sunlib.enquete-en-ligne.com"
+          SFTP_PORT = 12360
+          SFTP_USERNAME = "SUNLIB-9180113"
+          SFTP_PASSWORD = os.environ['SFTP_PASSWORD']
+          AIRTABLE_TOKEN = os.environ['AIRTABLE_TOKEN']
+          
+          # ============================================
+          # FONCTIONS
+          # ============================================
+          
+          def get_field_value(fields, field_id, default=''):
+              """Récupère la valeur d'un champ en gérant les listes"""
+              value = fields.get(field_id, default)
+              if isinstance(value, list):
+                  return value[0] if value else default
+              return value if value else default
+          
+          # ============================================
+          # SCRIPT PRINCIPAL
+          # ============================================
+          
+          print("=" * 60)
+          print("🚀 EXPORT VOCAZA - MODE DEBUG")
+          print("=" * 60)
+          print(f"Date : {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+          print()
+          
+          # 1. CONNEXION AIRTABLE
+          print("📊 Connexion à Airtable...")
+          api = Api(AIRTABLE_TOKEN)
+          table = api.table(BASE_ID, TABLE_ID)
+          
+          # 2. RÉCUPÉRATION DES CONTACTS
+          print("📊 Récupération des contacts à exporter...")
+          formula = "AND({Statut Vocaza}='', {Email}!='')"
+          
+          try:
+              records = table.all(view=VIEW_ID, formula=formula)
+              print(f"✅ {len(records)} contacts trouvés")
+          except Exception as e:
+              print(f"❌ Erreur Airtable : {e}")
+              exit(1)
+          
+          if len(records) == 0:
+              print("ℹ️  Aucun contact à envoyer aujourd'hui")
+              print("=" * 60)
+              exit(0)
+          
+          # 🔍 DEBUG : Afficher les 3 premiers records complets
+          print()
+          print("=" * 60)
+          print("🔍 DEBUG - DONNÉES AIRTABLE BRUTES")
+          print("=" * 60)
+          
+          for i, record in enumerate(records[:3]):
+              print(f"\n📋 Contact {i+1} :")
+              print(f"   ID : {record['id']}")
+              print(f"   Fields disponibles : {list(record['fields'].keys())[:10]}...")  # Premiers 10 champs
+              print(f"   Données complètes :")
+              
+              # Afficher chaque champ qu'on veut extraire
+              fields = record['fields']
+              print(f"   - PDL (ID: {FIELD_PDL}) : {fields.get(FIELD_PDL, 'VIDE')}")
+              print(f"   - Nom (ID: {FIELD_NOM}) : {fields.get(FIELD_NOM, 'VIDE')}")
+              print(f"   - Prenom (ID: {FIELD_PRENOM}) : {fields.get(FIELD_PRENOM, 'VIDE')}")
+              print(f"   - Entreprise (ID: {FIELD_NOM_ENTREPRISE}) : {fields.get(FIELD_NOM_ENTREPRISE, 'VIDE')}")
+              print(f"   - Civilité (ID: {FIELD_CIVILITE}) : {fields.get(FIELD_CIVILITE, 'VIDE')}")
+              print(f"   - Email (ID: {FIELD_EMAIL}) : {fields.get(FIELD_EMAIL, 'VIDE')}")
+              print(f"   - Installateur (ID: {FIELD_INSTALLATEUR}) : {fields.get(FIELD_INSTALLATEUR, 'VIDE')}")
+              print(f"   - Config (ID: {FIELD_CONFIG_CLIENT}) : {fields.get(FIELD_CONFIG_CLIENT, 'VIDE')}")
+          
+          print("\n" + "=" * 60)
+          
+          # 3. GÉNÉRATION DU CSV
+          print()
+          print("📝 Génération du fichier CSV...")
+          
+          timestamp = datetime.now().strftime('%Y%m%d')
+          filename = f"sunlib_contacts_{timestamp}.csv"
+          temp_file = f"/tmp/{filename}"
+          
+          record_ids = []
+          csv_lines = []
+          
+          try:
+              with open(temp_file, 'w', encoding='utf-8', newline='') as csvfile:
+                  writer = csv.writer(csvfile, delimiter=';', quoting=csv.QUOTE_MINIMAL)
+                  
+                  # En-têtes
+                  headers = [
+                      'N° de PDL',
+                      'Nom',
+                      'Prenom',
+                      'Nom de l\'entreprise',
+                      'Civilité Abonné 1',
+                      'Email',
+                      'Installateur',
+                      'Champs IA Config client'
+                  ]
+                  writer.writerow(headers)
+                  csv_lines.append(';'.join(headers))
+                  
+                  # Données
+                  for record in records:
+                      fields = record['fields']
+                      
+                      row = [
+                          get_field_value(fields, FIELD_PDL),
+                          get_field_value(fields, FIELD_NOM),
+                          get_field_value(fields, FIELD_PRENOM),
+                          get_field_value(fields, FIELD_NOM_ENTREPRISE),
+                          get_field_value(fields, FIELD_CIVILITE),
+                          get_field_value(fields, FIELD_EMAIL),
+                          get_field_value(fields, FIELD_INSTALLATEUR),
+                          get_field_value(fields, FIELD_CONFIG_CLIENT)
+                      ]
+                      
+                      writer.writerow(row)
+                      csv_lines.append(';'.join([str(v) for v in row]))
+                      record_ids.append(record['id'])
+              
+              # Vérifier la taille du fichier
+              file_size = os.path.getsize(temp_file)
+              print(f"✅ CSV généré : {filename}")
+              print(f"   Lignes : {len(records)} contacts")
+              print(f"   Taille : {file_size} octets")
+              print(f"   Encodage : UTF-8")
+              print(f"   Séparateur : point-virgule (;)")
+              
+              # 🔍 DEBUG : Afficher le contenu du CSV
+              print()
+              print("=" * 60)
+              print("🔍 DEBUG - CONTENU DU CSV GÉNÉRÉ")
+              print("=" * 60)
+              for i, line in enumerate(csv_lines[:4]):  # En-têtes + 3 premières lignes
+                  print(f"Ligne {i} : {line}")
+              print("=" * 60)
+              
+          except Exception as e:
+              print(f"❌ Erreur génération CSV : {e}")
+              import traceback
+              print(traceback.format_exc())
+              exit(1)
+          
+          # 4. UPLOAD SFTP (désactivé en mode debug)
+          print()
+          print("⚠️  MODE DEBUG : Upload SFTP désactivé")
+          print("   Pour activer l'upload, utilisez le workflow normal")
+          
+          # Nettoyer le fichier temporaire
+          if os.path.exists(temp_file):
+              os.remove(temp_file)
+          
+          print()
+          print("=" * 60)
+          print("✅ DEBUG TERMINÉ")
+          print("=" * 60)
+          SCRIPT_END
+      
+      - name: Run export script
+        env:
+          AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
+          SFTP_PASSWORD: ${{ secrets.SFTP_PASSWORD }}
+        run: python export_vocaza.py
