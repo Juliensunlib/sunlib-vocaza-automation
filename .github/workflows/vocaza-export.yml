@@ -40,19 +40,19 @@ jobs:
           TABLE_ID = "tblcACuSWYttnFQNr"
           VIEW_ID = "viwQn2IYQ5nBuXxkY"
           
-          # Field IDs
-          FIELD_PDL = "fldEEokisVxAniL1y"
-          FIELD_NOM = "fldfnBO2Xb6mNgAcq"
-          FIELD_PRENOM = "fldhxncaPKtHlqqgZ"
-          FIELD_NOM_ENTREPRISE = "flduVtvZSWvLPSBEg"
-          FIELD_CIVILITE = "fldKr5bCTxRDzy4aR"
-          FIELD_EMAIL = "fldG47uG3mXq1qGRP"
-          FIELD_INSTALLATEUR = "fldNY6lBfZQCXYTCa"
-          FIELD_CONFIG_CLIENT = "fld3SpiGzcJrADLgL"
+          # Noms de colonnes Airtable (pas Field IDs)
+          COL_PDL = "N° de PDL"
+          COL_NOM = "Nom"
+          COL_PRENOM = "Prenom"
+          COL_NOM_ENTREPRISE = "Nom de l'entreprise"
+          COL_CIVILITE = "Civilité Abonné 1"
+          COL_EMAIL = "Email"
+          COL_INSTALLATEUR = "Contacts Installateur"
+          COL_CONFIG_CLIENT = "Champs IA Config client"
           
           # Tracking
-          FIELD_STATUT_VOCAZA = "fldEAceKmwRR9we4a"
-          FIELD_DATE_ENVOI = "fld8QZLv3tebi4523"
+          COL_STATUT_VOCAZA = "Statut Vocaza"
+          COL_DATE_ENVOI = "Date d'envoi Vocaza"
           
           # Statut Vocaza - Option IDs
           OPTION_ENVOYE = "selk5AkrlBwJ2gudt"
@@ -69,9 +69,9 @@ jobs:
           # FONCTIONS
           # ============================================
           
-          def get_field_value(fields, field_id, default=''):
+          def get_field_value(fields, field_name, default=''):
               """Récupère la valeur d'un champ en gérant les listes"""
-              value = fields.get(field_id, default)
+              value = fields.get(field_name, default)
               if isinstance(value, list):
                   return value[0] if value else default
               return value if value else default
@@ -93,7 +93,7 @@ jobs:
           
           # 2. RÉCUPÉRATION DES CONTACTS
           print("📊 Récupération des contacts à exporter...")
-          formula = "AND({Statut Vocaza}='', {Email}!='')"
+          formula = f"AND({{{COL_STATUT_VOCAZA}}}='', {{{COL_EMAIL}}}!='')"
           
           try:
               records = table.all(view=VIEW_ID, formula=formula)
@@ -122,7 +122,7 @@ jobs:
                   # IMPORTANT : Séparateur = POINT-VIRGULE (format Vocaza)
                   writer = csv.writer(csvfile, delimiter=';', quoting=csv.QUOTE_MINIMAL)
                   
-                  # En-têtes - 8 colonnes dans l'ordre exact (Email avec majuscule)
+                  # En-têtes - 8 colonnes dans l'ordre exact
                   writer.writerow([
                       'N° de PDL',
                       'Nom',
@@ -139,14 +139,14 @@ jobs:
                       fields = record['fields']
                       
                       writer.writerow([
-                          get_field_value(fields, FIELD_PDL),
-                          get_field_value(fields, FIELD_NOM),
-                          get_field_value(fields, FIELD_PRENOM),
-                          get_field_value(fields, FIELD_NOM_ENTREPRISE),
-                          get_field_value(fields, FIELD_CIVILITE),
-                          get_field_value(fields, FIELD_EMAIL),
-                          get_field_value(fields, FIELD_INSTALLATEUR),
-                          get_field_value(fields, FIELD_CONFIG_CLIENT)
+                          get_field_value(fields, COL_PDL),
+                          get_field_value(fields, COL_NOM),
+                          get_field_value(fields, COL_PRENOM),
+                          get_field_value(fields, COL_NOM_ENTREPRISE),
+                          get_field_value(fields, COL_CIVILITE),
+                          get_field_value(fields, COL_EMAIL),
+                          get_field_value(fields, COL_INSTALLATEUR),
+                          get_field_value(fields, COL_CONFIG_CLIENT)
                       ])
                       
                       record_ids.append(record['id'])
@@ -225,8 +225,8 @@ jobs:
                           updates.append({
                               'id': record_id,
                               'fields': {
-                                  FIELD_STATUT_VOCAZA: OPTION_ENVOYE,
-                                  FIELD_DATE_ENVOI: today
+                                  COL_STATUT_VOCAZA: {'id': OPTION_ENVOYE},
+                                  COL_DATE_ENVOI: today
                               }
                           })
                       else:
@@ -234,7 +234,7 @@ jobs:
                           updates.append({
                               'id': record_id,
                               'fields': {
-                                  FIELD_STATUT_VOCAZA: OPTION_ECHEC
+                                  COL_STATUT_VOCAZA: {'id': OPTION_ECHEC}
                               }
                           })
                   
