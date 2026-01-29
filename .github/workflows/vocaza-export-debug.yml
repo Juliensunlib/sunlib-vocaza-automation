@@ -1,9 +1,7 @@
-name: Export Vocaza Quotidien
+name: Export Vocaza Quotidien - DEBUG
 
 on:
-  schedule:
-    - cron: '0 17 * * *'  # 18h00 heure de Paris (hiver)
-  workflow_dispatch:  # Permet test manuel
+  workflow_dispatch:  # Test manuel uniquement
 
 jobs:
   export-to-vocaza:
@@ -27,6 +25,7 @@ jobs:
           cat > export_vocaza.py << 'SCRIPT_END'
           import os
           import csv
+          import json
           import paramiko
           from datetime import datetime
           from pyairtable import Api
@@ -54,10 +53,6 @@ jobs:
           COL_STATUT_VOCAZA = "Statut Vocaza"
           COL_DATE_ENVOI = "Date d'envoi Vocaza"
           
-          # Statut Vocaza - Option IDs
-          OPTION_ENVOYE = "selk5AkrlBwJ2gudt"
-          OPTION_ECHEC = "selqdKkqKxe5wAarj"
-          
           # SFTP Vocaza
           SFTP_HOST = "sunlib.enquete-en-ligne.com"
           SFTP_PORT = 12360
@@ -81,7 +76,7 @@ jobs:
           # ============================================
           
           print("=" * 60)
-          print("🚀 EXPORT VOCAZA - DÉMARRAGE")
+          print("🚀 EXPORT VOCAZA - MODE DEBUG CORRIGÉ")
           print("=" * 60)
           print(f"Date : {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
           print()
@@ -107,6 +102,29 @@ jobs:
               print("=" * 60)
               exit(0)
           
+          # 🔍 DEBUG : Afficher les 3 premiers records complets
+          print()
+          print("=" * 60)
+          print("🔍 DEBUG - DONNÉES AIRTABLE BRUTES")
+          print("=" * 60)
+          
+          for i, record in enumerate(records[:3]):
+              print(f"\n📋 Contact {i+1} :")
+              print(f"   ID : {record['id']}")
+              
+              # Afficher chaque champ qu'on veut extraire AVEC LES NOMS DE COLONNES
+              fields = record['fields']
+              print(f"   - PDL (Colonne: {COL_PDL}) : {fields.get(COL_PDL, 'VIDE')}")
+              print(f"   - Nom (Colonne: {COL_NOM}) : {fields.get(COL_NOM, 'VIDE')}")
+              print(f"   - Prenom (Colonne: {COL_PRENOM}) : {fields.get(COL_PRENOM, 'VIDE')}")
+              print(f"   - Entreprise (Colonne: {COL_NOM_ENTREPRISE}) : {fields.get(COL_NOM_ENTREPRISE, 'VIDE')}")
+              print(f"   - Civilité (Colonne: {COL_CIVILITE}) : {fields.get(COL_CIVILITE, 'VIDE')}")
+              print(f"   - Email (Colonne: {COL_EMAIL}) : {fields.get(COL_EMAIL, 'VIDE')}")
+              print(f"   - Installateur (Colonne: {COL_INSTALLATEUR}) : {fields.get(COL_INSTALLATEUR, 'VIDE')}")
+              print(f"   - Config (Colonne: {COL_CONFIG_CLIENT}) : {fields.get(COL_CONFIG_CLIENT, 'VIDE')}")
+          
+          print("\n" + "=" * 60)
+          
           # 3. GÉNÉRATION DU CSV
           print()
           print("📝 Génération du fichier CSV...")
@@ -116,14 +134,14 @@ jobs:
           temp_file = f"/tmp/{filename}"
           
           record_ids = []
+          csv_lines = []
           
           try:
               with open(temp_file, 'w', encoding='utf-8', newline='') as csvfile:
-                  # IMPORTANT : Séparateur = POINT-VIRGULE (format Vocaza)
                   writer = csv.writer(csvfile, delimiter=';', quoting=csv.QUOTE_MINIMAL)
                   
-                  # En-têtes - 8 colonnes dans l'ordre exact
-                  writer.writerow([
+                  # En-têtes
+                  headers = [
                       'N° de PDL',
                       'Nom',
                       'Prenom',
@@ -132,13 +150,15 @@ jobs:
                       'Email',
                       'Installateur',
                       'Champs IA Config client'
-                  ])
+                  ]
+                  writer.writerow(headers)
+                  csv_lines.append(';'.join(headers))
                   
                   # Données
                   for record in records:
                       fields = record['fields']
                       
-                      writer.writerow([
+                      row = [
                           get_field_value(fields, COL_PDL),
                           get_field_value(fields, COL_NOM),
                           get_field_value(fields, COL_PRENOM),
@@ -147,8 +167,10 @@ jobs:
                           get_field_value(fields, COL_EMAIL),
                           get_field_value(fields, COL_INSTALLATEUR),
                           get_field_value(fields, COL_CONFIG_CLIENT)
-                      ])
+                      ]
                       
+                      writer.writerow(row)
+                      csv_lines.append(';'.join([str(v) for v in row]))
                       record_ids.append(record['id'])
               
               # Vérifier la taille du fichier
@@ -159,83 +181,38 @@ jobs:
               print(f"   Encodage : UTF-8")
               print(f"   Séparateur : point-virgule (;)")
               
+              # 🔍 DEBUG : Afficher le contenu du CSV
+              print()
+              print("=" * 60)
+              print("🔍 DEBUG - CONTENU DU CSV GÉNÉRÉ")
+              print("=" * 60)
+              for i, line in enumerate(csv_lines[:4]):  # En-têtes + 3 premières lignes
+                  print(f"Ligne {i} : {line}")
+              print("=" * 60)
+              
           except Exception as e:
               print(f"❌ Erreur génération CSV : {e}")
-              exit(1)
-          
-          # 4. UPLOAD SFTP
-          print()
-          print("📤 Upload SFTP vers Vocaza...")
-          print(f"   Serveur : {SFTP_HOST}:{SFTP_PORT}")
-          
-          upload_success = False
-          
-          try:
-              # Connexion SFTP
-              transport = paramiko.Transport((SFTP_HOST, SFTP_PORT))
-              transport.connect(username=SFTP_USERNAME, password=SFTP_PASSWORD)
-              sftp = paramiko.SFTPClient.from_transport(transport)
-              
-              # Upload
-              sftp.put(temp_file, f"/{filename}")
-              
-              # Vérification
-              remote_size = sftp.stat(f"/{filename}").st_size
-              local_size = os.path.getsize(temp_file)
-              
-              if remote_size == local_size:
-                  print(f"✅ Fichier uploadé avec succès !")
-                  print(f"   Taille locale : {local_size} octets")
-                  print(f"   Taille distante : {remote_size} octets")
-                  upload_success = True
-              else:
-                  print(f"❌ Erreur : tailles différentes")
-                  print(f"   Local : {local_size} octets")
-                  print(f"   Distant : {remote_size} octets")
-              
-              sftp.close()
-              transport.close()
-              
-          except Exception as e:
-              print(f"❌ Erreur SFTP : {e}")
               import traceback
               print(traceback.format_exc())
+              exit(1)
           
-          finally:
-              # Nettoyer le fichier temporaire
-              if os.path.exists(temp_file):
-                  os.remove(temp_file)
-          
-          # 5. MISE À JOUR AIRTABLE
+          # 4. UPLOAD SFTP (désactivé en mode debug)
           print()
-          print("🔄 Mise à jour Airtable...")
+          print("⚠️  MODE DEBUG : Upload SFTP désactivé")
+          print("   Pour activer l'upload, utilisez le workflow normal")
           
-          today = datetime.now().strftime('%Y-%m-%d')
-          batch_size = 10
-          total_updated = 0
+          # Nettoyer le fichier temporaire
+          if os.path.exists(temp_file):
+              os.remove(temp_file)
           
-          try:
-              for i in range(0, len(record_ids), batch_size):
-                  batch = record_ids[i:i+batch_size]
-                  
-                  updates = []
-                  for record_id in batch:
-                      if upload_success:
-                          # Succès : Statut "Envoyé" + Date
-                          updates.append({
-                              'id': record_id,
-                              'fields': {
-                                  COL_STATUT_VOCAZA: {'id': OPTION_ENVOYE},
-                                  COL_DATE_ENVOI: today
-                              }
-                          })
-                      else:
-                          # Échec : Statut "Echec" uniquement
-                          updates.append({
-                              'id': record_id,
-                              'fields': {
-                                  COL_STATUT_VOCAZA: {'id': OPTION_ECHEC}
-                              }
-                          })
-                  
-                  ta
+          print()
+          print("=" * 60)
+          print("✅ DEBUG TERMINÉ")
+          print("=" * 60)
+          SCRIPT_END
+      
+      - name: Run export script
+        env:
+          AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
+          SFTP_PASSWORD: ${{ secrets.SFTP_PASSWORD }}
+        run: python export_vocaza.py
