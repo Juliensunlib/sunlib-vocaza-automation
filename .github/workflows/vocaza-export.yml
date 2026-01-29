@@ -129,7 +129,7 @@ jobs:
                       'Prenom',
                       'Nom de l\'entreprise',
                       'Civilité Abonné 1',
-                      'Email',
+                      'email',
                       'Installateur',
                       'Champs IA Config client'
                   ])
