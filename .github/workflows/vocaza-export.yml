@@ -122,14 +122,14 @@ jobs:
                   # IMPORTANT : Séparateur = POINT-VIRGULE (format Vocaza)
                   writer = csv.writer(csvfile, delimiter=';', quoting=csv.QUOTE_MINIMAL)
                   
-                  # En-têtes - 8 colonnes dans l'ordre exact (email en minuscule)
+                  # En-têtes - 8 colonnes dans l'ordre exact (Email avec majuscule)
                   writer.writerow([
                       'N° de PDL',
                       'Nom',
                       'Prenom',
                       'Nom de l\'entreprise',
                       'Civilité Abonné 1',
-                      'email',
+                      'Email',
                       'Installateur',
                       'Champs IA Config client'
                   ])
