@@ -47,7 +47,7 @@ jobs:
           COL_NOM_ENTREPRISE = "Nom de l'entreprise"
           COL_CIVILITE = "Civilité Abonné 1"
           COL_EMAIL = "Email"
-          COL_INSTALLATEUR = "Contacts Installateur"
+          COL_INSTALLATEUR = "Nom de l'entreprise (from Installateur )"
           COL_CONFIG_CLIENT = "Champs IA Config client"
           
           # Tracking
@@ -173,95 +173,3 @@ jobs:
               sftp = paramiko.SFTPClient.from_transport(transport)
               
               # Upload
-              sftp.put(temp_file, f"/{filename}")
-              
-              # Vérification
-              remote_size = sftp.stat(f"/{filename}").st_size
-              local_size = os.path.getsize(temp_file)
-              
-              if remote_size == local_size:
-                  print(f"✅ Fichier uploadé avec succès !")
-                  print(f"   Taille locale : {local_size} octets")
-                  print(f"   Taille distante : {remote_size} octets")
-                  upload_success = True
-              else:
-                  print(f"❌ Erreur : tailles différentes")
-                  print(f"   Local : {local_size} octets")
-                  print(f"   Distant : {remote_size} octets")
-              
-              sftp.close()
-              transport.close()
-              
-          except Exception as e:
-              print(f"❌ Erreur SFTP : {e}")
-              import traceback
-              print(traceback.format_exc())
-          
-          finally:
-              # Nettoyer le fichier temporaire
-              if os.path.exists(temp_file):
-                  os.remove(temp_file)
-          
-          # 5. MISE À JOUR AIRTABLE
-          print()
-          print("🔄 Mise à jour Airtable...")
-          
-          today = datetime.now().strftime('%Y-%m-%d')
-          batch_size = 10
-          total_updated = 0
-          
-          try:
-              for i in range(0, len(record_ids), batch_size):
-                  batch = record_ids[i:i+batch_size]
-                  
-                  updates = []
-                  for record_id in batch:
-                      if upload_success:
-                          # Succès : Statut "Envoyé" + Date
-                          updates.append({
-                              'id': record_id,
-                              'fields': {
-                                  COL_STATUT_VOCAZA: 'Envoyé',
-                                  COL_DATE_ENVOI: today
-                              }
-                          })
-                      else:
-                          # Échec : Statut "Echec" uniquement
-                          updates.append({
-                              'id': record_id,
-                              'fields': {
-                                  COL_STATUT_VOCAZA: 'Echec'
-                              }
-                          })
-                  
-                  table.batch_update(updates)
-                  total_updated += len(updates)
-                  print(f"   ✅ {total_updated}/{len(record_ids)} contacts mis à jour")
-              
-              print(f"✅ Mise à jour Airtable terminée")
-              
-          except Exception as e:
-              print(f"❌ Erreur mise à jour Airtable : {e}")
-          
-          # 6. RÉSUMÉ FINAL
-          print()
-          print("=" * 60)
-          print("📊 RÉSUMÉ DE L'EXPORT")
-          print("=" * 60)
-          print(f"Contacts traités    : {len(records)}")
-          print(f"Fichier généré      : {filename}")
-          print(f"Format CSV          : 8 colonnes, séparateur point-virgule")
-          print(f"Upload SFTP         : {'✅ Succès' if upload_success else '❌ Échec'}")
-          print(f"Statut Airtable     : {'Envoyé' if upload_success else 'Echec'}")
-          print(f"Heure de fin        : {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
-          print("=" * 60)
-          
-          # Code de sortie
-          exit(0 if upload_success else 1)
-          SCRIPT_END
-      
-      - name: Run export script
-        env:
-          AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
-          SFTP_PASSWORD: ${{ secrets.SFTP_PASSWORD }}
-        run: python export_vocaza.py
