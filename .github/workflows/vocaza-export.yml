@@ -120,7 +120,7 @@ jobs:
           try:
               with open(temp_file, 'w', encoding='utf-8', newline='') as csvfile:
                   # IMPORTANT : Séparateur = VIRGULE (comme dans le fichier de référence)
-                  writer = csv.writer(csvfile, delimiter=',', quoting=csv.QUOTE_MINIMAL)
+                  writer = csv.writer(csvfile, delimiter=';', quoting=csv.QUOTE_MINIMAL)
                   
                   # En-têtes - 8 colonnes dans l'ordre exact
                   writer.writerow([
