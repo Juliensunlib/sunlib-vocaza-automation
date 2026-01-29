@@ -2,8 +2,8 @@ name: Export Vocaza Quotidien
 
 on:
   schedule:
-    - cron: '0 17 * * *'
-  workflow_dispatch:
+    - cron: '0 17 * * *'  # 18h00 heure de Paris (hiver)
+  workflow_dispatch:  # Permet test manuel
 
 jobs:
   export-to-vocaza:
@@ -22,7 +22,7 @@ jobs:
         run: |
           pip install pyairtable paramiko
       
-      - name: Create Python script
+      - name: Create export script
         run: |
           cat > export_vocaza.py << 'SCRIPT_END'
           import os
@@ -30,9 +30,12 @@ jobs:
           import paramiko
           from datetime import datetime
           from pyairtable import Api
-          from io import StringIO
           
-          # Configuration
+          # ============================================
+          # CONFIGURATION
+          # ============================================
+          
+          # Airtable
           BASE_ID = "appe55vTZRk6Ssd2w"
           TABLE_ID = "tblcACuSWYttnFQNr"
           VIEW_ID = "viwQn2IYQ5nBuXxkY"
@@ -47,134 +50,211 @@ jobs:
           FIELD_STATUT_VOCAZA = "fldEAceKmwRR9we4a"
           FIELD_DATE_ENVOI = "fld8QZLv3tebi4523"
           
-          # Option IDs pour Statut Vocaza
+          # Statut Vocaza - Option IDs
           OPTION_ENVOYE = "selk5AkrlBwJ2gudt"
           OPTION_ECHEC = "selqdKkqKxe5wAarj"
           
-          # SFTP Configuration
+          # SFTP Vocaza
           SFTP_HOST = "sunlib.enquete-en-ligne.com"
           SFTP_PORT = 12360
           SFTP_USERNAME = "SUNLIB-9180113"
           SFTP_PASSWORD = os.environ['SFTP_PASSWORD']
+          AIRTABLE_TOKEN = os.environ['AIRTABLE_TOKEN']
           
-          print("🚀 Début de l'export Vocaza...")
+          # ============================================
+          # FONCTIONS
+          # ============================================
           
-          # 1. Connexion Airtable
-          api = Api(os.environ['AIRTABLE_TOKEN'])
+          def format_date(iso_date):
+              """Convertit date ISO en DD/MM/YYYY"""
+              if not iso_date:
+                  return ''
+              try:
+                  date_obj = datetime.fromisoformat(iso_date.replace('Z', '+00:00'))
+                  return date_obj.strftime('%d/%m/%Y')
+              except:
+                  return ''
+          
+          def get_agence(field_value):
+              """Extrait l'agence (premier élément si liste)"""
+              if not field_value:
+                  return ''
+              if isinstance(field_value, list):
+                  return field_value[0] if field_value else ''
+              return str(field_value)
+          
+          # ============================================
+          # SCRIPT PRINCIPAL
+          # ============================================
+          
+          print("=" * 60)
+          print("🚀 EXPORT VOCAZA - DÉMARRAGE")
+          print("=" * 60)
+          print(f"Date : {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+          print()
+          
+          # 1. CONNEXION AIRTABLE
+          print("📊 Connexion à Airtable...")
+          api = Api(AIRTABLE_TOKEN)
           table = api.table(BASE_ID, TABLE_ID)
           
-          print("📊 Récupération des contacts Airtable...")
-          
-          # Récupérer les records de la vue avec filtre
+          # 2. RÉCUPÉRATION DES CONTACTS
+          print("📊 Récupération des contacts à exporter...")
           formula = "AND({Statut Vocaza}='', {Email}!='')"
-          records = table.all(view=VIEW_ID, formula=formula)
-          
-          print(f"✅ {len(records)} contacts trouvés")
-          
-          if len(records) == 0:
-              print("ℹ️ Aucun contact à envoyer aujourd'hui")
-              exit(0)
-          
-          # 2. Générer le CSV
-          print("📝 Génération du fichier CSV...")
-          
-          csv_output = StringIO()
-          csv_writer = csv.writer(csv_output, delimiter=';', quoting=csv.QUOTE_MINIMAL)
-          
-          # En-têtes
-          csv_writer.writerow(['E-mail', 'Prénom', 'Nom', 'Téléphone', 'Date_inscription', 'Agence'])
-          
-          # Données
-          record_ids = []
-          for record in records:
-              fields = record['fields']
-              
-              # Formatage date (ISO -> DD/MM/YYYY)
-              date_inscription = ''
-              if FIELD_DATE_CREATION in fields:
-                  date_obj = datetime.fromisoformat(fields[FIELD_DATE_CREATION].replace('Z', '+00:00'))
-                  date_inscription = date_obj.strftime('%d/%m/%Y')
-              
-              # Récupération agence (premier élément si liste)
-              agence = ''
-              if FIELD_AGENCE in fields and fields[FIELD_AGENCE]:
-                  agence = fields[FIELD_AGENCE][0] if isinstance(fields[FIELD_AGENCE], list) else fields[FIELD_AGENCE]
-              
-              csv_writer.writerow([
-                  fields.get(FIELD_EMAIL, ''),
-                  fields.get(FIELD_PRENOM, ''),
-                  fields.get(FIELD_NOM, ''),
-                  fields.get(FIELD_TELEPHONE, ''),
-                  date_inscription,
-                  agence
-              ])
-              
-              record_ids.append(record['id'])
-          
-          csv_content = csv_output.getvalue()
-          
-          # Nom du fichier
-          timestamp = datetime.now().strftime('%Y%m%d')
-          filename = f"sunlib_contacts_{timestamp}.csv"
-          
-          print(f"✅ CSV généré : {filename}")
-          
-          # 3. Upload SFTP
-          print("📤 Connexion SFTP...")
           
           try:
+              records = table.all(view=VIEW_ID, formula=formula)
+              print(f"✅ {len(records)} contacts trouvés")
+          except Exception as e:
+              print(f"❌ Erreur Airtable : {e}")
+              exit(1)
+          
+          if len(records) == 0:
+              print("ℹ️  Aucun contact à envoyer aujourd'hui")
+              print("=" * 60)
+              exit(0)
+          
+          # 3. GÉNÉRATION DU CSV
+          print()
+          print("📝 Génération du fichier CSV...")
+          
+          timestamp = datetime.now().strftime('%Y%m%d')
+          filename = f"sunlib_contacts_{timestamp}.csv"
+          temp_file = f"/tmp/{filename}"
+          
+          record_ids = []
+          
+          try:
+              with open(temp_file, 'w', encoding='utf-8', newline='') as csvfile:
+                  writer = csv.writer(csvfile, delimiter=';', quoting=csv.QUOTE_MINIMAL)
+                  
+                  # En-têtes (minuscules, sans accents - format Vocaza)
+                  writer.writerow(['email', 'prenom', 'nom', 'telephone', 'date_inscription', 'agence'])
+                  
+                  # Données
+                  for record in records:
+                      fields = record['fields']
+                      
+                      writer.writerow([
+                          fields.get(FIELD_EMAIL, ''),
+                          fields.get(FIELD_PRENOM, ''),
+                          fields.get(FIELD_NOM, ''),
+                          fields.get(FIELD_TELEPHONE, ''),
+                          format_date(fields.get(FIELD_DATE_CREATION)),
+                          get_agence(fields.get(FIELD_AGENCE))
+                      ])
+                      
+                      record_ids.append(record['id'])
+              
+              # Vérifier la taille du fichier
+              file_size = os.path.getsize(temp_file)
+              print(f"✅ CSV généré : {filename}")
+              print(f"   Lignes : {len(records)} contacts")
+              print(f"   Taille : {file_size} octets")
+              print(f"   Encodage : UTF-8")
+              
+          except Exception as e:
+              print(f"❌ Erreur génération CSV : {e}")
+              exit(1)
+          
+          # 4. UPLOAD SFTP
+          print()
+          print("📤 Upload SFTP vers Vocaza...")
+          print(f"   Serveur : {SFTP_HOST}:{SFTP_PORT}")
+          
+          upload_success = False
+          
+          try:
+              # Connexion SFTP
               transport = paramiko.Transport((SFTP_HOST, SFTP_PORT))
               transport.connect(username=SFTP_USERNAME, password=SFTP_PASSWORD)
               sftp = paramiko.SFTPClient.from_transport(transport)
               
-              print(f"📤 Upload du fichier vers Vocaza...")
+              # Upload
+              sftp.put(temp_file, f"/{filename}")
               
-              # Upload du fichier
-              sftp.putfo(StringIO(csv_content), f"/{filename}")
+              # Vérification
+              remote_size = sftp.stat(f"/{filename}").st_size
+              local_size = os.path.getsize(temp_file)
               
-              print(f"✅ Fichier {filename} uploadé avec succès !")
+              if remote_size == local_size:
+                  print(f"✅ Fichier uploadé avec succès !")
+                  print(f"   Taille locale : {local_size} octets")
+                  print(f"   Taille distante : {remote_size} octets")
+                  upload_success = True
+              else:
+                  print(f"❌ Erreur : tailles différentes")
+                  print(f"   Local : {local_size} octets")
+                  print(f"   Distant : {remote_size} octets")
               
               sftp.close()
               transport.close()
               
-              upload_success = True
-              
           except Exception as e:
-              print(f"❌ Erreur SFTP : {str(e)}")
-              upload_success = False
+              print(f"❌ Erreur SFTP : {e}")
+              import traceback
+              print(traceback.format_exc())
           
-          # 4. Mise à jour Airtable
-          print("🔄 Mise à jour des statuts Airtable...")
+          finally:
+              # Nettoyer le fichier temporaire
+              if os.path.exists(temp_file):
+                  os.remove(temp_file)
+          
+          # 5. MISE À JOUR AIRTABLE
+          print()
+          print("🔄 Mise à jour Airtable...")
           
           today = datetime.now().strftime('%Y-%m-%d')
+          batch_size = 10
+          total_updated = 0
           
-          for record_id in record_ids:
-              try:
-                  if upload_success:
-                      # Succès : Statut "Envoyé" + Date d'envoi
-                      table.update(record_id, {
-                          FIELD_STATUT_VOCAZA: OPTION_ENVOYE,
-                          FIELD_DATE_ENVOI: today
-                      })
-                  else:
-                      # Échec : Statut "Echec"
-                      table.update(record_id, {
-                          FIELD_STATUT_VOCAZA: OPTION_ECHEC
-                      })
-              except Exception as e:
-                  print(f"⚠️ Erreur mise à jour record {record_id}: {str(e)}")
+          try:
+              for i in range(0, len(record_ids), batch_size):
+                  batch = record_ids[i:i+batch_size]
+                  
+                  updates = []
+                  for record_id in batch:
+                      if upload_success:
+                          # Succès : Statut "Envoyé" + Date
+                          updates.append({
+                              'id': record_id,
+                              'fields': {
+                                  FIELD_STATUT_VOCAZA: OPTION_ENVOYE,
+                                  FIELD_DATE_ENVOI: today
+                              }
+                          })
+                      else:
+                          # Échec : Statut "Echec" uniquement
+                          updates.append({
+                              'id': record_id,
+                              'fields': {
+                                  FIELD_STATUT_VOCAZA: OPTION_ECHEC
+                              }
+                          })
+                  
+                  table.batch_update(updates)
+                  total_updated += len(updates)
+                  print(f"   ✅ {total_updated}/{len(record_ids)} contacts mis à jour")
+              
+              print(f"✅ Mise à jour Airtable terminée")
+              
+          except Exception as e:
+              print(f"❌ Erreur mise à jour Airtable : {e}")
           
-          print("✅ Mise à jour Airtable terminée")
-          
-          # 5. Résumé
-          print("\n" + "="*50)
+          # 6. RÉSUMÉ FINAL
+          print()
+          print("=" * 60)
           print("📊 RÉSUMÉ DE L'EXPORT")
-          print("="*50)
-          print(f"Contacts exportés : {len(records)}")
-          print(f"Fichier : {filename}")
-          print(f"Statut upload : {'✅ Succès' if upload_success else '❌ Échec'}")
-          print(f"Heure : {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
-          print("="*50)
+          print("=" * 60)
+          print(f"Contacts traités    : {len(records)}")
+          print(f"Fichier généré      : {filename}")
+          print(f"Upload SFTP         : {'✅ Succès' if upload_success else '❌ Échec'}")
+          print(f"Statut Airtable     : {'Envoyé' if upload_success else 'Echec'}")
+          print(f"Heure de fin        : {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+          print("=" * 60)
+          
+          # Code de sortie
+          exit(0 if upload_success else 1)
           SCRIPT_END
       
       - name: Run export script
