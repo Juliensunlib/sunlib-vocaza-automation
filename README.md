@@ -42,11 +42,13 @@ Vous pouvez aussi le déclencher manuellement depuis l'onglet "Actions" de GitHu
 
 ## Format du fichier CSV
 
-Le fichier généré contient les colonnes suivantes :
+Le fichier généré contient les colonnes suivantes (format requis par Vocaza) :
 
-- E-mail
-- Prénom
+- N° de PDL (vide)
 - Nom
-- Téléphone
-- Date_inscription (format DD/MM/YYYY)
-- Agence
+- Prenom (sans accent)
+- Nom de l'entreprise (vide)
+- Civilité Abonné 1 (vide)
+- Email (avec majuscule)
+- Installateur (agence depuis Airtable)
+- Champs IA Config client (valeur par défaut: "Duo")

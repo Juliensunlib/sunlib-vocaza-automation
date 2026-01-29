@@ -54,32 +54,28 @@ print("📝 Génération du fichier CSV...")
 csv_output = StringIO()
 csv_writer = csv.writer(csv_output, delimiter=';', quoting=csv.QUOTE_MINIMAL)
 
-# En-têtes
-csv_writer.writerow(['E-mail', 'Prénom', 'Nom', 'Téléphone', 'Date_inscription', 'Agence'])
+# En-têtes (format exact requis par Vocaza)
+csv_writer.writerow(['N° de PDL', 'Nom', 'Prenom', 'Nom de l\'entreprise', 'Civilité Abonné 1', 'Email', 'Installateur', 'Champs IA Config client'])
 
 # Données
 record_ids = []
 for record in records:
     fields = record['fields']
 
-    # Formatage date (ISO -> DD/MM/YYYY)
-    date_inscription = ''
-    if FIELD_DATE_CREATION in fields:
-        date_obj = datetime.fromisoformat(fields[FIELD_DATE_CREATION].replace('Z', '+00:00'))
-        date_inscription = date_obj.strftime('%d/%m/%Y')
-
     # Récupération agence (premier élément si liste)
-    agence = ''
+    installateur = ''
     if FIELD_AGENCE in fields and fields[FIELD_AGENCE]:
-        agence = fields[FIELD_AGENCE][0] if isinstance(fields[FIELD_AGENCE], list) else fields[FIELD_AGENCE]
+        installateur = fields[FIELD_AGENCE][0] if isinstance(fields[FIELD_AGENCE], list) else fields[FIELD_AGENCE]
 
     csv_writer.writerow([
-        fields.get(FIELD_EMAIL, ''),
-        fields.get(FIELD_PRENOM, ''),
+        '',  # N° de PDL (vide)
         fields.get(FIELD_NOM, ''),
-        fields.get(FIELD_TELEPHONE, ''),
-        date_inscription,
-        agence
+        fields.get(FIELD_PRENOM, ''),
+        '',  # Nom de l'entreprise (vide)
+        '',  # Civilité Abonné 1 (vide)
+        fields.get(FIELD_EMAIL, ''),
+        installateur,
+        'Duo'  # Champs IA Config client (valeur par défaut)
     ])
 
     record_ids.append(record['id'])
