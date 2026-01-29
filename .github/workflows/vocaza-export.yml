@@ -41,12 +41,16 @@ jobs:
           VIEW_ID = "viwQn2IYQ5nBuXxkY"
           
           # Field IDs
-          FIELD_EMAIL = "fldG47uG3mXq1qGRP"
-          FIELD_PRENOM = "fldhxncaPKtHlqqgZ"
+          FIELD_PDL = "fldEEokisVxAniL1y"
           FIELD_NOM = "fldfnBO2Xb6mNgAcq"
-          FIELD_TELEPHONE = "fldI86dLP0hkVIaMb"
-          FIELD_DATE_CREATION = "fldxygbu165RonF4P"
-          FIELD_AGENCE = "fldNY6lBfZQCXYTCa"
+          FIELD_PRENOM = "fldhxncaPKtHlqqgZ"
+          FIELD_NOM_ENTREPRISE = "flduVtvZSWvLPSBEg"
+          FIELD_CIVILITE = "fldKr5bCTxRDzy4aR"
+          FIELD_EMAIL = "fldG47uG3mXq1qGRP"
+          FIELD_INSTALLATEUR = "fldNY6lBfZQCXYTCa"
+          FIELD_CONFIG_CLIENT = "fld3SpiGzcJrADLgL"
+          
+          # Tracking
           FIELD_STATUT_VOCAZA = "fldEAceKmwRR9we4a"
           FIELD_DATE_ENVOI = "fld8QZLv3tebi4523"
           
@@ -65,23 +69,12 @@ jobs:
           # FONCTIONS
           # ============================================
           
-          def format_date(iso_date):
-              """Convertit date ISO en DD/MM/YYYY"""
-              if not iso_date:
-                  return ''
-              try:
-                  date_obj = datetime.fromisoformat(iso_date.replace('Z', '+00:00'))
-                  return date_obj.strftime('%d/%m/%Y')
-              except:
-                  return ''
-          
-          def get_agence(field_value):
-              """Extrait l'agence (premier élément si liste)"""
-              if not field_value:
-                  return ''
-              if isinstance(field_value, list):
-                  return field_value[0] if field_value else ''
-              return str(field_value)
+          def get_field_value(fields, field_id, default=''):
+              """Récupère la valeur d'un champ en gérant les listes"""
+              value = fields.get(field_id, default)
+              if isinstance(value, list):
+                  return value[0] if value else default
+              return value if value else default
           
           # ============================================
           # SCRIPT PRINCIPAL
@@ -126,22 +119,34 @@ jobs:
           
           try:
               with open(temp_file, 'w', encoding='utf-8', newline='') as csvfile:
-                  writer = csv.writer(csvfile, delimiter=';', quoting=csv.QUOTE_MINIMAL)
+                  # IMPORTANT : Séparateur = VIRGULE (comme dans le fichier de référence)
+                  writer = csv.writer(csvfile, delimiter=',', quoting=csv.QUOTE_MINIMAL)
                   
-                  # En-têtes (minuscules, sans accents - format Vocaza)
-                  writer.writerow(['email', 'prenom', 'nom', 'telephone', 'date_inscription', 'agence'])
+                  # En-têtes - 8 colonnes dans l'ordre exact
+                  writer.writerow([
+                      'N° de PDL',
+                      'Nom',
+                      'Prenom',
+                      'Nom de l\'entreprise',
+                      'Civilité Abonné 1',
+                      'Email',
+                      'Installateur',
+                      'Champs IA Config client'
+                  ])
                   
                   # Données
                   for record in records:
                       fields = record['fields']
                       
                       writer.writerow([
-                          fields.get(FIELD_EMAIL, ''),
-                          fields.get(FIELD_PRENOM, ''),
-                          fields.get(FIELD_NOM, ''),
-                          fields.get(FIELD_TELEPHONE, ''),
-                          format_date(fields.get(FIELD_DATE_CREATION)),
-                          get_agence(fields.get(FIELD_AGENCE))
+                          get_field_value(fields, FIELD_PDL),
+                          get_field_value(fields, FIELD_NOM),
+                          get_field_value(fields, FIELD_PRENOM),
+                          get_field_value(fields, FIELD_NOM_ENTREPRISE),
+                          get_field_value(fields, FIELD_CIVILITE),
+                          get_field_value(fields, FIELD_EMAIL),
+                          get_field_value(fields, FIELD_INSTALLATEUR),
+                          get_field_value(fields, FIELD_CONFIG_CLIENT)
                       ])
                       
                       record_ids.append(record['id'])
@@ -152,6 +157,7 @@ jobs:
               print(f"   Lignes : {len(records)} contacts")
               print(f"   Taille : {file_size} octets")
               print(f"   Encodage : UTF-8")
+              print(f"   Séparateur : virgule (,)")
               
           except Exception as e:
               print(f"❌ Erreur génération CSV : {e}")
@@ -248,6 +254,7 @@ jobs:
           print("=" * 60)
           print(f"Contacts traités    : {len(records)}")
           print(f"Fichier généré      : {filename}")
+          print(f"Format CSV          : 8 colonnes, séparateur virgule")
           print(f"Upload SFTP         : {'✅ Succès' if upload_success else '❌ Échec'}")
           print(f"Statut Airtable     : {'Envoyé' if upload_success else 'Echec'}")
           print(f"Heure de fin        : {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
