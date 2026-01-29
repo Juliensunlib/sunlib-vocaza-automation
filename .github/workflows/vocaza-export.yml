@@ -119,10 +119,10 @@ jobs:
           
           try:
               with open(temp_file, 'w', encoding='utf-8', newline='') as csvfile:
-                  # IMPORTANT : Séparateur = VIRGULE (comme dans le fichier de référence)
+                  # IMPORTANT : Séparateur = POINT-VIRGULE (format Vocaza)
                   writer = csv.writer(csvfile, delimiter=';', quoting=csv.QUOTE_MINIMAL)
                   
-                  # En-têtes - 8 colonnes dans l'ordre exact
+                  # En-têtes - 8 colonnes dans l'ordre exact (email en minuscule)
                   writer.writerow([
                       'N° de PDL',
                       'Nom',
@@ -157,7 +157,7 @@ jobs:
               print(f"   Lignes : {len(records)} contacts")
               print(f"   Taille : {file_size} octets")
               print(f"   Encodage : UTF-8")
-              print(f"   Séparateur : virgule (,)")
+              print(f"   Séparateur : point-virgule (;)")
               
           except Exception as e:
               print(f"❌ Erreur génération CSV : {e}")
@@ -254,7 +254,7 @@ jobs:
           print("=" * 60)
           print(f"Contacts traités    : {len(records)}")
           print(f"Fichier généré      : {filename}")
-          print(f"Format CSV          : 8 colonnes, séparateur virgule")
+          print(f"Format CSV          : 8 colonnes, séparateur point-virgule")
           print(f"Upload SFTP         : {'✅ Succès' if upload_success else '❌ Échec'}")
           print(f"Statut Airtable     : {'Envoyé' if upload_success else 'Echec'}")
           print(f"Heure de fin        : {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
