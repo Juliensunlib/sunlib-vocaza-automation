@@ -93,14 +93,15 @@ jobs:
           record_ids = []
           
           try:
-              with open(temp_file, 'w', encoding='cp1252', newline='') as csvfile:
+              # ENCODAGE ANSI (cp1252) pour Vocaza
+              with open(temp_file, 'w', encoding='cp1252', errors='replace', newline='') as csvfile:
                   writer = csv.writer(csvfile, delimiter=';', quoting=csv.QUOTE_MINIMAL)
                   
                   writer.writerow([
                       'N° de PDL',
                       'Nom',
                       'Prenom',
-                      'Nom de l\'entreprise',
+                      'Nom de l entreprise',
                       'Civilité Abonné 1',
                       'Email',
                       'Installateur',
@@ -127,9 +128,12 @@ jobs:
               print(f"✅ CSV généré : {filename}")
               print(f"   Lignes : {len(records)} contacts")
               print(f"   Taille : {file_size} octets")
+              print(f"   Encodage : ANSI (cp1252)")
               
           except Exception as e:
               print(f"❌ Erreur génération CSV : {e}")
+              import traceback
+              print(traceback.format_exc())
               exit(1)
           
           print()
