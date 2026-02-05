@@ -1,7 +1,7 @@
-name: Export Vocaza Quotidien - DEBUG
+name: Export Vocaza Debug - ULTRA DÉTAILLÉ
 
 on:
-  workflow_dispatch:  # Test manuel uniquement
+  workflow_dispatch:
 
 jobs:
   export-to-vocaza:
@@ -25,21 +25,15 @@ jobs:
           cat > export_vocaza.py << 'SCRIPT_END'
           import os
           import csv
-          import json
           import paramiko
+          import binascii
           from datetime import datetime
           from pyairtable import Api
           
-          # ============================================
-          # CONFIGURATION
-          # ============================================
-          
-          # Airtable
           BASE_ID = "appe55vTZRk6Ssd2w"
           TABLE_ID = "tblcACuSWYttnFQNr"
           VIEW_ID = "viwQn2IYQ5nBuXxkY"
           
-          # Noms de colonnes Airtable (pas Field IDs)
           COL_PDL = "N° de PDL"
           COL_NOM = "Nom"
           COL_PRENOM = "Prenom"
@@ -48,36 +42,24 @@ jobs:
           COL_EMAIL = "Email"
           COL_INSTALLATEUR = "Nom de l'entreprise (from Installateur )"
           COL_CONFIG_CLIENT = "Champs IA Config client"
-          
-          # Tracking
           COL_STATUT_VOCAZA = "Statut Vocaza"
           COL_DATE_ENVOI = "Date d'envoi Vocaza"
           
-          # SFTP Vocaza
           SFTP_HOST = "sunlib.enquete-en-ligne.com"
           SFTP_PORT = 12360
           SFTP_USERNAME = "SUNLIB-9180113"
           SFTP_PASSWORD = os.environ['SFTP_PASSWORD']
           AIRTABLE_TOKEN = os.environ['AIRTABLE_TOKEN']
           
-          # ============================================
-          # FONCTIONS
-          # ============================================
-          
           def get_field_value(fields, field_name, default=''):
-              """Récupère la valeur d'un champ en gérant les listes"""
               value = fields.get(field_name, default)
               if isinstance(value, list):
                   return value[0] if value else default
               return value if value else default
           
-          # ============================================
-          # SCRIPT PRINCIPAL
-          # ============================================
-          
-          print("=" * 60)
-          print("🚀 EXPORT VOCAZA - MODE DEBUG ENCODAGE ANSI")
-          print("=" * 60)
+          print("=" * 80)
+          print("🚀 EXPORT VOCAZA - DEBUG ULTRA DÉTAILLÉ")
+          print("=" * 80)
           print(f"Date : {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
           print()
           
@@ -99,33 +81,30 @@ jobs:
           
           if len(records) == 0:
               print("ℹ️  Aucun contact à envoyer aujourd'hui")
-              print("=" * 60)
               exit(0)
           
-          # 🔍 DEBUG : Afficher les 3 premiers records complets
+          # 3. AFFICHAGE DÉTAILLÉ DES DONNÉES
           print()
-          print("=" * 60)
-          print("🔍 DEBUG - DONNÉES AIRTABLE BRUTES")
-          print("=" * 60)
+          print("=" * 80)
+          print("🔍 DONNÉES AIRTABLE - ANALYSE DÉTAILLÉE")
+          print("=" * 80)
           
-          for i, record in enumerate(records[:3]):
-              print(f"\n📋 Contact {i+1} :")
-              print(f"   ID : {record['id']}")
-              
-              # Afficher chaque champ qu'on veut extraire
+          for i, record in enumerate(records):
               fields = record['fields']
-              print(f"   - PDL (Colonne: {COL_PDL}) : {fields.get(COL_PDL, 'VIDE')}")
-              print(f"   - Nom (Colonne: {COL_NOM}) : {fields.get(COL_NOM, 'VIDE')}")
-              print(f"   - Prenom (Colonne: {COL_PRENOM}) : {fields.get(COL_PRENOM, 'VIDE')}")
-              print(f"   - Entreprise (Colonne: {COL_NOM_ENTREPRISE}) : {fields.get(COL_NOM_ENTREPRISE, 'VIDE')}")
-              print(f"   - Civilité (Colonne: {COL_CIVILITE}) : {fields.get(COL_CIVILITE, 'VIDE')}")
-              print(f"   - Email (Colonne: {COL_EMAIL}) : {fields.get(COL_EMAIL, 'VIDE')}")
-              print(f"   - Installateur (Colonne: {COL_INSTALLATEUR}) : {fields.get(COL_INSTALLATEUR, 'VIDE')}")
-              print(f"   - Config (Colonne: {COL_CONFIG_CLIENT}) : {fields.get(COL_CONFIG_CLIENT, 'VIDE')}")
+              print(f"\n📋 Contact {i+1}/{len(records)} :")
+              print(f"   Record ID    : {record['id']}")
+              print(f"   PDL          : '{get_field_value(fields, COL_PDL)}' (type: {type(get_field_value(fields, COL_PDL)).__name__}, len: {len(str(get_field_value(fields, COL_PDL)))})")
+              print(f"   Nom          : '{get_field_value(fields, COL_NOM)}' (type: {type(get_field_value(fields, COL_NOM)).__name__}, len: {len(str(get_field_value(fields, COL_NOM)))})")
+              print(f"   Prenom       : '{get_field_value(fields, COL_PRENOM)}' (type: {type(get_field_value(fields, COL_PRENOM)).__name__}, len: {len(str(get_field_value(fields, COL_PRENOM)))})")
+              print(f"   Entreprise   : '{get_field_value(fields, COL_NOM_ENTREPRISE)}' (type: {type(get_field_value(fields, COL_NOM_ENTREPRISE)).__name__}, len: {len(str(get_field_value(fields, COL_NOM_ENTREPRISE)))})")
+              print(f"   Civilité     : '{get_field_value(fields, COL_CIVILITE)}' (type: {type(get_field_value(fields, COL_CIVILITE)).__name__}, len: {len(str(get_field_value(fields, COL_CIVILITE)))})")
+              print(f"   Email        : '{get_field_value(fields, COL_EMAIL)}' (type: {type(get_field_value(fields, COL_EMAIL)).__name__}, len: {len(str(get_field_value(fields, COL_EMAIL)))})")
+              print(f"   Installateur : '{get_field_value(fields, COL_INSTALLATEUR)}' (type: {type(get_field_value(fields, COL_INSTALLATEUR)).__name__}, len: {len(str(get_field_value(fields, COL_INSTALLATEUR)))})")
+              print(f"   Config       : '{get_field_value(fields, COL_CONFIG_CLIENT)}' (type: {type(get_field_value(fields, COL_CONFIG_CLIENT)).__name__}, len: {len(str(get_field_value(fields, COL_CONFIG_CLIENT)))})")
           
-          print("\n" + "=" * 60)
+          print("\n" + "=" * 80)
           
-          # 3. GÉNÉRATION DU CSV
+          # 4. GÉNÉRATION DU CSV
           print()
           print("📝 Génération du fichier CSV...")
           
@@ -134,32 +113,29 @@ jobs:
           temp_file = f"/tmp/{filename}"
           
           record_ids = []
-          csv_lines = []
           
           try:
-              # MODIFICATION PRINCIPALE : Encodage ANSI (cp1252) au lieu d'UTF-8
               with open(temp_file, 'w', encoding='cp1252', errors='replace', newline='') as csvfile:
                   writer = csv.writer(csvfile, delimiter=';', quoting=csv.QUOTE_MINIMAL)
                   
-                  # En-têtes (apostrophe sans échappement)
+                  # En-têtes
                   headers = [
                       'N° de PDL',
                       'Nom',
                       'Prenom',
-                      'Nom de l entreprise',
+                      'Nom de l\'entreprise',
                       'Civilité Abonné 1',
                       'Email',
                       'Installateur',
                       'Champs IA Config client'
                   ]
                   writer.writerow(headers)
-                  csv_lines.append(';'.join(headers))
                   
                   # Données
                   for record in records:
                       fields = record['fields']
                       
-                      row = [
+                      writer.writerow([
                           get_field_value(fields, COL_PDL),
                           get_field_value(fields, COL_NOM),
                           get_field_value(fields, COL_PRENOM),
@@ -168,43 +144,14 @@ jobs:
                           get_field_value(fields, COL_EMAIL),
                           get_field_value(fields, COL_INSTALLATEUR),
                           get_field_value(fields, COL_CONFIG_CLIENT)
-                      ]
+                      ])
                       
-                      writer.writerow(row)
-                      csv_lines.append(';'.join([str(v) for v in row]))
                       record_ids.append(record['id'])
               
-              # Vérifier la taille du fichier
               file_size = os.path.getsize(temp_file)
               print(f"✅ CSV généré : {filename}")
-              print(f"   Lignes : {len(records)} contacts")
               print(f"   Taille : {file_size} octets")
               print(f"   Encodage : ANSI (cp1252)")
-              print(f"   Séparateur : point-virgule (;)")
-              
-              # 🔍 DEBUG : Afficher le contenu du CSV
-              print()
-              print("=" * 60)
-              print("🔍 DEBUG - CONTENU DU CSV GÉNÉRÉ")
-              print("=" * 60)
-              for i, line in enumerate(csv_lines[:4]):  # En-têtes + 3 premières lignes
-                  print(f"Ligne {i} : {line}")
-              print("=" * 60)
-              
-              # 🔍 DEBUG : Vérifier l'encodage en relisant le fichier
-              print()
-              print("=" * 60)
-              print("🔍 DEBUG - VÉRIFICATION ENCODAGE")
-              print("=" * 60)
-              try:
-                  with open(temp_file, 'r', encoding='cp1252') as f:
-                      first_lines = [f.readline().strip() for _ in range(2)]
-                      print("✅ Fichier lisible en ANSI (cp1252)")
-                      for i, line in enumerate(first_lines):
-                          print(f"   Ligne {i+1}: {line[:80]}...")
-              except Exception as e:
-                  print(f"⚠️  Erreur lecture ANSI : {e}")
-              print("=" * 60)
               
           except Exception as e:
               print(f"❌ Erreur génération CSV : {e}")
@@ -212,25 +159,108 @@ jobs:
               print(traceback.format_exc())
               exit(1)
           
-          # 4. UPLOAD SFTP (désactivé en mode debug)
+          # 5. ANALYSE DU FICHIER GÉNÉRÉ
           print()
-          print("⚠️  MODE DEBUG : Upload SFTP désactivé")
-          print("   Pour activer l'upload, utilisez le workflow normal")
+          print("=" * 80)
+          print("🔍 ANALYSE DU FICHIER CSV GÉNÉRÉ")
+          print("=" * 80)
           
-          # Nettoyer le fichier temporaire
+          # Lire le contenu complet
+          with open(temp_file, 'rb') as f:
+              raw_content = f.read()
+          
+          print(f"\n📊 Statistiques du fichier :")
+          print(f"   Taille totale : {len(raw_content)} octets")
+          print(f"   Nombre de lignes : {raw_content.count(b'\\n') + 1}")
+          print(f"   Nombre de ; : {raw_content.count(b';')}")
+          
+          # Afficher les 500 premiers bytes en hexa
+          print(f"\n🔢 Premiers 500 bytes (hexadécimal) :")
+          hex_dump = binascii.hexlify(raw_content[:500]).decode('ascii')
+          for i in range(0, len(hex_dump), 80):
+              print(f"   {hex_dump[i:i+80]}")
+          
+          # Afficher le contenu texte complet
+          print(f"\n📄 Contenu complet du fichier (encodage cp1252) :")
+          print("-" * 80)
+          try:
+              with open(temp_file, 'r', encoding='cp1252') as f:
+                  content_lines = f.readlines()
+                  for i, line in enumerate(content_lines, 1):
+                      print(f"Ligne {i}: {line.rstrip()}")
+          except Exception as e:
+              print(f"❌ Erreur lecture : {e}")
+          print("-" * 80)
+          
+          # Vérifier caractère par caractère de la première ligne
+          print(f"\n🔍 Analyse caractère par caractère de l'en-tête :")
+          try:
+              with open(temp_file, 'r', encoding='cp1252') as f:
+                  first_line = f.readline().rstrip()
+                  print(f"   Longueur : {len(first_line)} caractères")
+                  for i, char in enumerate(first_line[:100]):  # Premier 100 caractères
+                      print(f"   [{i:2d}] '{char}' (ASCII: {ord(char)}, hex: {hex(ord(char))})")
+          except Exception as e:
+              print(f"❌ Erreur : {e}")
+          
+          # Vérifier les fins de ligne
+          print(f"\n🔍 Analyse des fins de ligne :")
+          if b'\\r\\n' in raw_content:
+              print(f"   ✅ Format Windows (CRLF - \\r\\n)")
+          elif b'\\n' in raw_content:
+              print(f"   ℹ️  Format Unix (LF - \\n)")
+          elif b'\\r' in raw_content:
+              print(f"   ⚠️  Format Mac ancien (CR - \\r)")
+          
+          print("\n" + "=" * 80)
+          
+          # 6. TEST DE RELECTURE
+          print()
+          print("=" * 80)
+          print("🔍 TEST DE RELECTURE DU CSV")
+          print("=" * 80)
+          
+          try:
+              with open(temp_file, 'r', encoding='cp1252', newline='') as csvfile:
+                  reader = csv.reader(csvfile, delimiter=';')
+                  rows = list(reader)
+                  
+                  print(f"✅ Fichier lisible : {len(rows)} lignes trouvées")
+                  print(f"\n📋 Structure détectée :")
+                  
+                  for i, row in enumerate(rows):
+                      print(f"   Ligne {i}: {len(row)} colonnes → {row}")
+                  
+          except Exception as e:
+              print(f"❌ Erreur relecture : {e}")
+          
+          print("\n" + "=" * 80)
+          
+          # 7. COPIE POUR TÉLÉCHARGEMENT
+          print()
+          print("💾 Copie du fichier pour téléchargement...")
+          
+          download_file = f"/tmp/debug_{filename}"
+          import shutil
+          shutil.copy(temp_file, download_file)
+          print(f"✅ Fichier copié : {download_file}")
+          
+          # Afficher le chemin absolu
+          print(f"   Chemin absolu : {os.path.abspath(download_file)}")
+          
+          print()
+          print("=" * 80)
+          print("⚠️  MODE DEBUG : Upload SFTP désactivé")
+          print("   Le fichier est prêt mais non envoyé à Vocaza")
+          print("=" * 80)
+          
+          # Nettoyer
           if os.path.exists(temp_file):
               os.remove(temp_file)
           
           print()
-          print("=" * 60)
           print("✅ DEBUG TERMINÉ")
-          print("=" * 60)
           print()
-          print("📋 MODIFICATIONS APPLIQUÉES :")
-          print("   ✅ Encodage changé de UTF-8 vers ANSI (cp1252)")
-          print("   ✅ Gestion des erreurs d'encodage (errors='replace')")
-          print("   ✅ Apostrophe retirée de l'en-tête 'Nom de l entreprise'")
-          print("=" * 60)
           SCRIPT_END
       
       - name: Run export script
@@ -238,3 +268,10 @@ jobs:
           AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
           SFTP_PASSWORD: ${{ secrets.SFTP_PASSWORD }}
         run: python export_vocaza.py
+      
+      - name: Upload CSV artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: vocaza-csv-debug
+          path: /tmp/debug_*.csv
+          retention-days: 1
