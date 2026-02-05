@@ -93,7 +93,7 @@ jobs:
           record_ids = []
           
           try:
-              with open(temp_file, 'w', encoding='utf-8', newline='') as csvfile:
+              with open(temp_file, 'w', encoding='cp1252', newline='') as csvfile:
                   writer = csv.writer(csvfile, delimiter=';', quoting=csv.QUOTE_MINIMAL)
                   
                   writer.writerow([
