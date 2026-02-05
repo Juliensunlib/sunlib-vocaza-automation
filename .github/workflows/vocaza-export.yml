@@ -101,7 +101,7 @@ jobs:
                       'N° de PDL',
                       'Nom',
                       'Prenom',
-                      'Nom de l entreprise',
+                      'Nom de l\'entreprise',
                       'Civilité Abonné 1',
                       'Email',
                       'Installateur',
@@ -148,17 +148,11 @@ jobs:
               sftp = paramiko.SFTPClient.from_transport(transport)
               
               sftp.put(temp_file, f"/{filename}")
+              print(f"✅ Fichier uploadé : {filename}")
               
-              remote_size = sftp.stat(f"/{filename}").st_size
-              local_size = os.path.getsize(temp_file)
-              
-              if remote_size == local_size:
-                  print(f"✅ Fichier uploadé avec succès !")
-                  print(f"   Taille locale : {local_size} octets")
-                  print(f"   Taille distante : {remote_size} octets")
-                  upload_success = True
-              else:
-                  print(f"❌ Erreur : tailles différentes")
+              # On considère l'upload réussi sans vérifier la taille
+              # (Vocaza déplace le fichier immédiatement, donc stat() échoue)
+              upload_success = True
               
               sftp.close()
               transport.close()
