@@ -169,10 +169,16 @@ jobs:
           with open(temp_file, 'rb') as f:
               raw_content = f.read()
           
+          newline_char = b'\n'
+          semicolon_char = b';'
+          crlf = b'\r\n'
+          lf = b'\n'
+          cr = b'\r'
+          
           print(f"\n📊 Statistiques du fichier :")
           print(f"   Taille totale : {len(raw_content)} octets")
-          print(f"   Nombre de lignes : {raw_content.count(b'\\n') + 1}")
-          print(f"   Nombre de ; : {raw_content.count(b';')}")
+          print(f"   Nombre de lignes : {raw_content.count(newline_char) + 1}")
+          print(f"   Nombre de ; : {raw_content.count(semicolon_char)}")
           
           # Afficher les 500 premiers bytes en hexa
           print(f"\n🔢 Premiers 500 bytes (hexadécimal) :")
@@ -205,12 +211,12 @@ jobs:
           
           # Vérifier les fins de ligne
           print(f"\n🔍 Analyse des fins de ligne :")
-          if b'\\r\\n' in raw_content:
-              print(f"   ✅ Format Windows (CRLF - \\r\\n)")
-          elif b'\\n' in raw_content:
-              print(f"   ℹ️  Format Unix (LF - \\n)")
-          elif b'\\r' in raw_content:
-              print(f"   ⚠️  Format Mac ancien (CR - \\r)")
+          if crlf in raw_content:
+              print(f"   ✅ Format Windows (CRLF)")
+          elif lf in raw_content:
+              print(f"   ℹ️  Format Unix (LF)")
+          elif cr in raw_content:
+              print(f"   ⚠️  Format Mac ancien (CR)")
           
           print("\n" + "=" * 80)
           
