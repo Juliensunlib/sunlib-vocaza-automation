@@ -76,7 +76,7 @@ jobs:
           # ============================================
           
           print("=" * 60)
-          print("🚀 EXPORT VOCAZA - MODE DEBUG AVEC INSTALLATEUR")
+          print("🚀 EXPORT VOCAZA - MODE DEBUG ENCODAGE ANSI")
           print("=" * 60)
           print(f"Date : {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
           print()
@@ -137,15 +137,16 @@ jobs:
           csv_lines = []
           
           try:
-              with open(temp_file, 'w', encoding='utf-8', newline='') as csvfile:
+              # MODIFICATION PRINCIPALE : Encodage ANSI (cp1252) au lieu d'UTF-8
+              with open(temp_file, 'w', encoding='cp1252', errors='replace', newline='') as csvfile:
                   writer = csv.writer(csvfile, delimiter=';', quoting=csv.QUOTE_MINIMAL)
                   
-                  # En-têtes
+                  # En-têtes (apostrophe sans échappement)
                   headers = [
                       'N° de PDL',
                       'Nom',
                       'Prenom',
-                      'Nom de l\'entreprise',
+                      'Nom de l entreprise',
                       'Civilité Abonné 1',
                       'Email',
                       'Installateur',
@@ -178,7 +179,7 @@ jobs:
               print(f"✅ CSV généré : {filename}")
               print(f"   Lignes : {len(records)} contacts")
               print(f"   Taille : {file_size} octets")
-              print(f"   Encodage : UTF-8")
+              print(f"   Encodage : ANSI (cp1252)")
               print(f"   Séparateur : point-virgule (;)")
               
               # 🔍 DEBUG : Afficher le contenu du CSV
@@ -188,6 +189,21 @@ jobs:
               print("=" * 60)
               for i, line in enumerate(csv_lines[:4]):  # En-têtes + 3 premières lignes
                   print(f"Ligne {i} : {line}")
+              print("=" * 60)
+              
+              # 🔍 DEBUG : Vérifier l'encodage en relisant le fichier
+              print()
+              print("=" * 60)
+              print("🔍 DEBUG - VÉRIFICATION ENCODAGE")
+              print("=" * 60)
+              try:
+                  with open(temp_file, 'r', encoding='cp1252') as f:
+                      first_lines = [f.readline().strip() for _ in range(2)]
+                      print("✅ Fichier lisible en ANSI (cp1252)")
+                      for i, line in enumerate(first_lines):
+                          print(f"   Ligne {i+1}: {line[:80]}...")
+              except Exception as e:
+                  print(f"⚠️  Erreur lecture ANSI : {e}")
               print("=" * 60)
               
           except Exception as e:
@@ -208,6 +224,12 @@ jobs:
           print()
           print("=" * 60)
           print("✅ DEBUG TERMINÉ")
+          print("=" * 60)
+          print()
+          print("📋 MODIFICATIONS APPLIQUÉES :")
+          print("   ✅ Encodage changé de UTF-8 vers ANSI (cp1252)")
+          print("   ✅ Gestion des erreurs d'encodage (errors='replace')")
+          print("   ✅ Apostrophe retirée de l'en-tête 'Nom de l entreprise'")
           print("=" * 60)
           SCRIPT_END
       
