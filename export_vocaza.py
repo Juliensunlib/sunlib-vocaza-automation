@@ -92,8 +92,16 @@ print(f"✅ CSV généré : {filename}")
 print("📤 Connexion SFTP...")
 
 try:
-    transport = paramiko.Transport((SFTP_HOST, SFTP_PORT))
-    transport.connect(username=SFTP_USERNAME, password=SFTP_PASSWORD)
+    # APRÈS
+transport = paramiko.Transport((SFTP_HOST, SFTP_PORT))
+transport.get_security_options().key_types = [
+    'ssh-rsa',
+    'ecdsa-sha2-nistp256',
+    'ecdsa-sha2-nistp384',
+    'ecdsa-sha2-nistp521',
+    'ssh-ed25519'
+]
+transport.connect(username=SFTP_USERNAME, password=SFTP_PASSWORD)
     sftp = paramiko.SFTPClient.from_transport(transport)
 
     print(f"📤 Upload du fichier vers Vocaza...")
