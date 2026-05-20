@@ -1,2 +1,2 @@
-pyairtable==2.3.3
-paramiko==3.4.0
+pyairtable>=2.3.3
+paramiko==2.12.0
