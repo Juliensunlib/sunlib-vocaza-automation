@@ -38,7 +38,6 @@ table = api.table(BASE_ID, TABLE_ID)
 
 print("📊 Récupération des contacts Airtable...")
 
-# Récupérer les records de la vue avec filtre
 formula = "AND({Statut Vocaza}='', {Email}!='')"
 records = table.all(view=VIEW_ID, formula=formula)
 
@@ -54,35 +53,31 @@ print("📝 Génération du fichier CSV...")
 csv_output = StringIO()
 csv_writer = csv.writer(csv_output, delimiter=';', quoting=csv.QUOTE_MINIMAL)
 
-# En-têtes (format exact requis par Vocaza)
 csv_writer.writerow(['N° de PDL', 'Nom', 'Prenom', "Nom de l'entreprise", 'Civilité Abonné 1', 'Email', 'Installateur', 'Champs IA Config client'])
 
-# Données
 record_ids = []
 for record in records:
     fields = record['fields']
 
-    # Récupération agence (premier élément si liste)
     installateur = ''
     if FIELD_AGENCE in fields and fields[FIELD_AGENCE]:
         installateur = fields[FIELD_AGENCE][0] if isinstance(fields[FIELD_AGENCE], list) else fields[FIELD_AGENCE]
 
     csv_writer.writerow([
-        '',  # N° de PDL (vide)
+        '',
         fields.get(FIELD_NOM, ''),
         fields.get(FIELD_PRENOM, ''),
-        '',  # Nom de l'entreprise (vide)
-        '',  # Civilité Abonné 1 (vide)
+        '',
+        '',
         fields.get(FIELD_EMAIL, ''),
         installateur,
-        'Duo'  # Champs IA Config client (valeur par défaut)
+        'Duo'
     ])
 
     record_ids.append(record['id'])
 
 csv_content = csv_output.getvalue()
 
-# Nom du fichier
 timestamp = datetime.now().strftime('%Y%m%d')
 filename = f"sunlib_contacts_{timestamp}.csv"
 
@@ -93,19 +88,11 @@ print("📤 Connexion SFTP...")
 
 try:
     transport = paramiko.Transport((SFTP_HOST, SFTP_PORT))
-    transport.get_security_options().key_types = [
-        'ssh-rsa',
-        'ecdsa-sha2-nistp256',
-        'ecdsa-sha2-nistp384',
-        'ecdsa-sha2-nistp521',
-        'ssh-ed25519'
-    ]
     transport.connect(username=SFTP_USERNAME, password=SFTP_PASSWORD)
     sftp = paramiko.SFTPClient.from_transport(transport)
 
     print(f"📤 Upload du fichier vers Vocaza...")
 
-    # Upload du fichier en mode binaire avec encodage UTF-8
     csv_bytes = BytesIO(csv_content.encode('utf-8'))
     sftp.putfo(csv_bytes, f"/{filename}")
 
@@ -128,13 +115,11 @@ today = datetime.now().strftime('%Y-%m-%d')
 for record_id in record_ids:
     try:
         if upload_success:
-            # Succès : Statut "Envoyé" + Date d'envoi
             table.update(record_id, {
                 FIELD_STATUT_VOCAZA: OPTION_ENVOYE,
                 FIELD_DATE_ENVOI: today
             })
         else:
-            # Échec : Statut "Echec"
             table.update(record_id, {
                 FIELD_STATUT_VOCAZA: OPTION_ECHEC
             })
