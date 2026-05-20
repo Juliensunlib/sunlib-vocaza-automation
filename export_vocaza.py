@@ -55,7 +55,7 @@ csv_output = StringIO()
 csv_writer = csv.writer(csv_output, delimiter=';', quoting=csv.QUOTE_MINIMAL)
 
 # En-têtes (format exact requis par Vocaza)
-csv_writer.writerow(['N° de PDL', 'Nom', 'Prenom', 'Nom de l\'entreprise', 'Civilité Abonné 1', 'Email', 'Installateur', 'Champs IA Config client'])
+csv_writer.writerow(['N° de PDL', 'Nom', 'Prenom', "Nom de l'entreprise", 'Civilité Abonné 1', 'Email', 'Installateur', 'Champs IA Config client'])
 
 # Données
 record_ids = []
@@ -92,16 +92,15 @@ print(f"✅ CSV généré : {filename}")
 print("📤 Connexion SFTP...")
 
 try:
-    # APRÈS
-transport = paramiko.Transport((SFTP_HOST, SFTP_PORT))
-transport.get_security_options().key_types = [
-    'ssh-rsa',
-    'ecdsa-sha2-nistp256',
-    'ecdsa-sha2-nistp384',
-    'ecdsa-sha2-nistp521',
-    'ssh-ed25519'
-]
-transport.connect(username=SFTP_USERNAME, password=SFTP_PASSWORD)
+    transport = paramiko.Transport((SFTP_HOST, SFTP_PORT))
+    transport.get_security_options().key_types = [
+        'ssh-rsa',
+        'ecdsa-sha2-nistp256',
+        'ecdsa-sha2-nistp384',
+        'ecdsa-sha2-nistp521',
+        'ssh-ed25519'
+    ]
+    transport.connect(username=SFTP_USERNAME, password=SFTP_PASSWORD)
     sftp = paramiko.SFTPClient.from_transport(transport)
 
     print(f"📤 Upload du fichier vers Vocaza...")
