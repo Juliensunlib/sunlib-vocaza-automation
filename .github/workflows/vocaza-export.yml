@@ -142,8 +142,12 @@ jobs:
           
           upload_success = False
           
-          try:
+                    try:
               transport = paramiko.Transport((SFTP_HOST, SFTP_PORT))
+              transport.get_security_options().key_types = (
+                  'ssh-rsa', 'rsa-sha2-256', 'rsa-sha2-512',
+                  'ssh-dss', 'ecdsa-sha2-nistp256', 'ssh-ed25519'
+              )
               transport.connect(username=SFTP_USERNAME, password=SFTP_PASSWORD)
               sftp = paramiko.SFTPClient.from_transport(transport)
               
