@@ -37,7 +37,7 @@ api = Api(os.environ['AIRTABLE_TOKEN'])
 table = api.table(BASE_ID, TABLE_ID)
 
 print("📊 Récupération des contacts Airtable...")
-formula = f"AND({{{COL_STATUT_VOCAZA}}}='', {{{COL_EMAIL}}}!='')"
+formula = "AND({Statut Vocaza}='', {Email}!='')"
 records = table.all(view=VIEW_ID, formula=formula)
 print(f"✅ {len(records)} contacts trouvés")
 
